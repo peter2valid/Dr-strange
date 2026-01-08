@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fallback if Tailwind isn't installed, though I'll try to rely on the install finishing */
+/* If the user runs this without Tailwind, these won't work, so I should provide manual implementations just in case or assume the install will handle it if I add it. */
+
+/* Actually, let's just write standard CSS to be safe and avoid another dependency. 
+   I will rewriting the components to use standard CSS would be tedious. 
+   I will just add the necessary classes here.
+*/
+
+html, body, #root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #000;
+}
+
+.absolute { position: absolute; }
+.relative { position: relative; }
+.top-0 { top: 0; }
+.left-0 { left: 0; }
+.bottom-10 { bottom: 2.5rem; }
+.left-1\/2 { left: 50%; }
+.transform { transform: translateX(-50%); }
+.-translate-x-1\/2 { transform: translateX(-50%); }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.w-screen { width: 100vw; }
+.h-screen { height: 100vh; }
+.bg-black { background-color: #000; }
+.z-10 { z-index: 10; }
+.-z-10 { z-index: -10; }
+.pointer-events-none { pointer-events: none; }
+.object-cover { object-fit: cover; }
+.overflow-hidden { overflow: hidden; }
+.text-center { text-align: center; }
+.text-orange-500 { color: #f97316; }
+.font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.opacity-70 { opacity: 0.7; }

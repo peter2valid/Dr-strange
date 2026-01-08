@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Strange Hand Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: 'Cinzel', 'Georgia', serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #videoElement {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #canvasElement {
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #ffaa00;
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 30px #ff8800, 0 0 50px #ffaa00;
+            pointer-events: none;
+            z-index: 100;
+            max-width: 80%;
+            transition: opacity 0.5s;
+            font-weight: bold;
+        }
+
+        #handStatus {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px 25px;
+            border-radius: 15px;
+            border: 2px solid #ffaa00;
+            color: #ffd700;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 0 30px rgba(255, 170, 0, 0.6), inset 0 0 20px rgba(255, 140, 0, 0.2);
+            z-index: 100;
+        }
+
+        #progressBar {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid #ffaa00;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
+            z-index: 100;
+        }
+
+        #progressFill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff8800, #ffaa00, #ffd700, #00d4ff);
+            transition: width 0.2s ease;
+            box-shadow: 0 0 20px #ffaa00, 0 0 40px #ffd700;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-active {
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+        }
+
+        .status-inactive {
+            background: #ff4444;
+            box-shadow: 0 0 10px #ff4444;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.6;
+                transform: scale(1.2);
+            }
+        }
+
+        #cameraPreview {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 160px;
+            height: 120px;
+            border: 2px solid #ffaa00;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
+            z-index: 100;
+        }
+
+        #cameraPreview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        #debugInfo {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #ffaa00;
+            color: #ffd700;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            z-index: 100;
+            max-width: 200px;
+        }
+    </style>
+</head>
+
+<body>
+    <video id="videoElement" autoplay playsinline></video>
+    <canvas id="canvasElement"></canvas>
+
+    <div id="instructions">
+        <div style="font-size: 36px; margin-bottom: 20px; text-shadow: 0 0 40px #ffaa00, 0 0 60px #ff8800;">✨ MYSTIC
+            ARTS ✨</div>
+        <div style="font-size: 20px;">Rotate your hand to conjure the portal</div>
+        <div style="font-size: 14px; margin-top: 10px; opacity: 0.8;">Make circular motions like casting a spell</div>
+    </div>
+
+    <div id="handStatus">
+        <span class="status-dot status-inactive"></span>
+        <span id="statusText">SCANNING FOR HAND...</span>
+    </div>
+
+    <div id="progressBar">
+        <div id="progressFill"></div>
+    </div>
+
+    <div id="debugInfo">
+        <div>Rotation: <span id="angleDebug">0°</span></div>
+        <div>Progress: <span id="progressDebug">0%</span></div>
+        <div>Smoothing: ENHANCED</div>
+    </div>
+
+    <div id="cameraPreview" style="display: none;">
+        <video id="previewVideo" autoplay playsinline></video>
+    </div>
+
+    <!-- MediaPipe Hands -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- 1. SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.001);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        // --- 2. IMPROVED HAND TRACKING VARIABLES ---
+        let handDetected = false;
+        let portalProgress = 0; // 0 to 100
+        let smoothedProgress = 0; // Smoothed version
+        let rotationHistory = []; // Store recent angles for smoothing
+        let initialHandAngle = null;
+        let angleSmoothed = 0;
+        const SMOOTHING_FACTOR = 0.15; // Lower = smoother but slower response
+        const HISTORY_SIZE = 5; // Number of frames to average
+
+        const videoElement = document.getElementById('videoElement');
+        const canvasElement = document.getElementById('canvasElement');
+        const canvasCtx = canvasElement.getContext('2d');
+        const statusText = document.getElementById('statusText');
+        const statusDot = document.querySelector('.status-dot');
+        const progressFill = document.getElementById('progressFill');
+        const instructions = document.getElementById('instructions');
+        const previewVideo = document.getElementById('previewVideo');
+        const angleDebug = document.getElementById('angleDebug');
+        const progressDebug = document.getElementById('progressDebug');
+
+        // --- 3. MEDIAPIPE HANDS SETUP (Optimized for low-quality cameras) ---
+        const hands = new Hands({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }
+        });
+
+        // Lower confidence thresholds for better detection on low-quality cameras
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1, // Keep at 1 for balance
+            minDetectionConfidence: 0.5, // Lowered from 0.7
+            minTrackingConfidence: 0.5, // Lowered from 0.7
+            selfieMode: true
+        });
+
+        hands.onResults(onHandsResults);
+
+        // --- 4. CAMERA INITIALIZATION ---
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user',
+                        frameRate: { ideal: 30 }
+                    }
+                });
+
+                videoElement.srcObject = stream;
+                previewVideo.srcObject = stream;
+
+                videoElement.onloadedmetadata = () => {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                    processCamera();
+                };
+
+                document.getElementById('cameraPreview').style.display = 'block';
+            } catch (error) {
+                console.error('Camera access denied:', error);
+                instructions.innerHTML = '<div style="color: #ff4444;">❌ CAMERA ACCESS REQUIRED</div><div style="font-size: 16px; margin-top: 10px;">Please allow camera access to conjure portals</div>';
+            }
+        }
+
+        async function processCamera() {
+            await hands.send({ image: videoElement });
+            requestAnimationFrame(processCamera);
+        }
+
+        // --- 5. EXPONENTIAL SMOOTHING FUNCTION ---
+        function smoothValue(current, target, factor) {
+            return current + (target - current) * factor;
+        }
+
+        // --- 6. IMPROVED HAND DETECTION & ROTATION CALCULATION ---
+        function onHandsResults(results) {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                handDetected = true;
+                statusDot.className = 'status-dot status-active';
+                statusText.textContent = 'HAND DETECTED ✓';
+
+                const landmarks = results.multiHandLandmarks[0];
+
+                // Use multiple landmark pairs for more robust rotation detection
+                const wrist = landmarks[0];
+                const indexBase = landmarks[5];
+                const middleBase = landmarks[9];
+                const ringBase = landmarks[13];
+                const pinkyBase = landmarks[17];
+
+                // Calculate center of palm (average of knuckles)
+                const palmCenterX = (indexBase.x + middleBase.x + ringBase.x + pinkyBase.x) / 4;
+                const palmCenterY = (indexBase.y + middleBase.y + ringBase.y + pinkyBase.y) / 4;
+
+                // Calculate angle from wrist to palm center (more stable than single finger)
+                const dx = palmCenterX - wrist.x;
+                const dy = palmCenterY - wrist.y;
+                let currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                // Normalize to 0-360
+                if (currentAngle < 0) currentAngle += 360;
+
+                // Initialize reference angle on first detection
+                if (initialHandAngle === null) {
+                    initialHandAngle = currentAngle;
+                    rotationHistory = [0];
+                }
+
+                // Calculate rotation difference
+                let angleDiff = currentAngle - initialHandAngle;
+
+                // Handle wraparound
+                if (angleDiff > 180) angleDiff -= 360;
+                if (angleDiff < -180) angleDiff += 360;
+
+                // Add to history for averaging
+                rotationHistory.push(Math.abs(angleDiff));
+                if (rotationHistory.length > HISTORY_SIZE) {
+                    rotationHistory.shift();
+                }
+
+                // Calculate average of recent rotations
+                const avgRotation = rotationHistory.reduce((a, b) => a + b, 0) / rotationHistory.length;
+
+                // Map rotation to progress - accumulate rotation for better low-quality camera support
+                let targetProgress = Math.min(100, (avgRotation / 180) * 100); // Half rotation = 100%
+
+                // Smooth the progress
+                portalProgress = smoothValue(portalProgress, targetProgress, SMOOTHING_FACTOR);
+
+                // Update UI with smoothed values
+                angleSmoothed = smoothValue(angleSmoothed, avgRotation, SMOOTHING_FACTOR);
+                progressFill.style.width = portalProgress + '%';
+                angleDebug.textContent = Math.round(angleSmoothed) + '°';
+                progressDebug.textContent = Math.round(portalProgress) + '%';
+
+                // Optional: Draw hand landmarks for debugging (with Dr. Strange colors)
+                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+                    { color: '#ffaa00', lineWidth: 3 });
+                drawLandmarks(canvasCtx, landmarks,
+                    { color: '#ffd700', lineWidth: 2, radius: 4 });
+
+            } else {
+                handDetected = false;
+                statusDot.className = 'status-dot status-inactive';
+                statusText.textContent = 'SCANNING FOR HAND...';
+
+                // Slowly decay progress when hand is lost (helps with intermittent detection)
+                portalProgress = Math.max(0, portalProgress - 0.3);
+                progressFill.style.width = portalProgress + '%';
+                progressDebug.textContent = Math.round(portalProgress) + '%';
+
+                // Reset after significant decay
+                if (portalProgress < 5) {
+                    initialHandAngle = null;
+                    rotationHistory = [];
+                }
+            }
+
+            canvasCtx.restore();
+        }
+
+        // --- 7. PROCEDURAL TEXTURE GENERATION (Dr. Strange Sorcery Theme) ---
+        function createMagicTexture(type, progress) {
+            const size = 1024;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const cx = size / 2;
+            const cy = size / 2;
+
+            // Dr. Strange color palette: Orange → Gold → Electric Blue
+            let strokeColor = '#ffffff';
+            let glowColor = '#ffffff';
+            let secondaryGlow = '#ff8800';
+
+            if (progress > 0) {
+                strokeColor = '#ffaa00'; // Orange
+                glowColor = '#ff8800';
+                secondaryGlow = '#ffd700';
+            }
+            if (progress > 33) {
+                strokeColor = '#ffd700'; // Gold
+                glowColor = '#ffaa00';
+                secondaryGlow = '#ff8800';
+            }
+            if (progress > 66) {
+                strokeColor = '#00d4ff'; // Electric Blue
+                glowColor = '#0088ff';
+                secondaryGlow = '#ffaa00';
+            }
+
+            ctx.strokeStyle = strokeColor;
+            ctx.fillStyle = strokeColor;
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.shadowBlur = 20 + (progress * 0.5);
+            ctx.shadowColor = glowColor;
+
+            const drawSquare = (s, angle) => {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                ctx.strokeRect(-s / 2, -s / 2, s, s);
+
+                // Add inner glow
+                ctx.shadowColor = secondaryGlow;
+                ctx.shadowBlur = 10;
+                ctx.strokeRect(-s / 2, -s / 2, s, s);
+                ctx.restore();
+            };
+
+            const drawRunes = (radius, count) => {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.font = 'bold 70px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const step = (Math.PI * 2) / count;
+                for (let i = 0; i < count; i++) {
+                    ctx.save();
+                    ctx.rotate(i * step);
+                    ctx.translate(0, -radius);
+                    // Mystical symbols
+                    const chars = "☥⚛⚕☯✡✦✧✨⚝⚜⭐";
+                    const char = chars[Math.floor(Math.random() * chars.length)];
+                    ctx.fillText(char, 0, 0);
+                    ctx.restore();
+                }
+                ctx.restore();
+            };
+
+            const drawMandala = () => {
+                // Complex mandala patterns
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.lineWidth = 8;
+
+                for (let r = 0; r < 3; r++) {
+                    ctx.beginPath();
+                    const radius = 150 + (r * 80);
+                    const points = 12 + (r * 4);
+
+                    for (let i = 0; i <= points; i++) {
+                        const angle = (i / points) * Math.PI * 2;
+                        const wave = Math.sin(angle * 6) * 20;
+                        const x = Math.cos(angle) * (radius + wave);
+                        const y = Math.sin(angle) * (radius + wave);
+
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+                ctx.restore();
+            };
+
+            if (type === 'outer') {
+                ctx.lineWidth = 18;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 480, 0, Math.PI * 2);
+                ctx.stroke();
+
+                drawRunes(440, 24);
+
+                ctx.lineWidth = 10;
+                drawSquare(620, 0);
+                drawSquare(620, Math.PI / 4);
+                drawSquare(620, Math.PI / 8);
+
+                drawMandala();
+            }
+            else if (type === 'middle') {
+                ctx.lineWidth = 12;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 350, 0, Math.PI * 2);
+                ctx.stroke();
+
+                drawRunes(320, 16);
+
+                // Geometric star pattern
+                ctx.beginPath();
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(cx + Math.cos(angle) * 300, cy + Math.sin(angle) * 300);
+                }
+                ctx.stroke();
+            }
+            else if (type === 'core') {
+                // Sacred geometry center
+                ctx.lineWidth = 8;
+                drawSquare(220, 0);
+                drawSquare(220, Math.PI / 12);
+                drawSquare(220, Math.PI / 6);
+                drawSquare(220, Math.PI / 4);
+
+                // Flower of life inspired center
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2;
+                    const x = cx + Math.cos(angle) * 50;
+                    const y = cy + Math.sin(angle) * 50;
+                    ctx.moveTo(x + 50, y);
+                    ctx.arc(x, y, 50, 0, Math.PI * 2);
+                }
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(cx, cy, 120, 0, Math.PI * 2);
+                ctx.shadowBlur = 40;
+                ctx.fill();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            return texture;
+        }
+
+        // --- 8. ENHANCED PARTICLE SYSTEM ---
+        const particleGeometry = new THREE.BufferGeometry();
+        const particleCount = 2000; // Increased for more density
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            const theta = Math.random() * Math.PI * 2;
+            const radius = 2 + Math.random() * 2;
+            positions[i * 3] = Math.cos(theta) * radius;
+            positions[i * 3 + 1] = Math.sin(theta) * radius;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 3;
+
+            velocities[i * 3] = (Math.random() - 0.5) * 0.02;
+            velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.02;
+            velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
+        }
+
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particleGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0xffaa00,
+            size: 0.08,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            sizeAttenuation: true
+        });
+
+        const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particleSystem);
+
+        // --- 9. BUILDING THE PORTAL ---
+        const shieldGroup = new THREE.Group();
+        scene.add(shieldGroup);
+
+        const baseMaterial = {
+            color: 0xffaa00,
+            transparent: true,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            opacity: 0
+        };
+
+        const geom1 = new THREE.PlaneGeometry(6, 6);
+        const mat1 = new THREE.MeshBasicMaterial({ ...baseMaterial, map: createMagicTexture('outer', 0) });
+        const ring1 = new THREE.Mesh(geom1, mat1);
+        shieldGroup.add(ring1);
+
+        const geom2 = new THREE.PlaneGeometry(4, 4);
+        const mat2 = new THREE.MeshBasicMaterial({ ...baseMaterial, map: createMagicTexture('middle', 0), opacity: 0 });
+        const ring2 = new THREE.Mesh(geom2, mat2);
+        ring2.position.z = 0.15;
+        shieldGroup.add(ring2);
+
+        const geom3 = new THREE.PlaneGeometry(2, 2);
+        const mat3 = new THREE.MeshBasicMaterial({ ...baseMaterial, map: createMagicTexture('core', 0), opacity: 0 });
+        const ring3 = new THREE.Mesh(geom3, mat3);
+        ring3.position.z = 0.3;
+        shieldGroup.add(ring3);
+
+        // --- 10. ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+        let textureUpdateCounter = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsed = clock.getElapsedTime();
+
+            // Smooth progress interpolation
+            smoothedProgress = smoothValue(smoothedProgress, portalProgress, 0.1);
+            const progressNormalized = smoothedProgress / 100;
+
+            // Update opacity
+            mat1.opacity = progressNormalized * 0.9;
+            mat2.opacity = progressNormalized * 0.7;
+            mat3.opacity = progressNormalized;
+
+            // Dr. Strange color transitions
+            if (progressNormalized > 0.66) {
+                mat1.color.setHex(0x00d4ff); // Electric Blue
+                mat2.color.setHex(0x0088ff);
+                mat3.color.setHex(0xffd700); // Keep gold center
+                particleMaterial.color.setHex(0x00d4ff);
+            } else if (progressNormalized > 0.33) {
+                mat1.color.setHex(0xffd700); // Gold
+                mat2.color.setHex(0xffaa00);
+                mat3.color.setHex(0xff8800);
+                particleMaterial.color.setHex(0xffd700);
+            } else {
+                mat1.color.setHex(0xffaa00); // Orange
+                mat2.color.setHex(0xff8800);
+                mat3.color.setHex(0xffaa00);
+                particleMaterial.color.setHex(0xffaa00);
+            }
+
+            // Enhanced particle effects
+            particleMaterial.opacity = Math.max(0, progressNormalized - 0.3) * 1.5;
+
+            // Animate particles
+            const particlePositions = particleGeometry.attributes.position.array;
+            const particleVelocities = particleGeometry.attributes.velocity.array;
+
+            for (let i = 0; i < particleCount; i++) {
+                particlePositions[i * 3] += particleVelocities[i * 3] * progressNormalized;
+                particlePositions[i * 3 + 1] += particleVelocities[i * 3 + 1] * progressNormalized;
+                particlePositions[i * 3 + 2] += particleVelocities[i * 3 + 2] * progressNormalized;
+
+                // Reset particles that go too far
+                const dist = Math.sqrt(
+                    particlePositions[i * 3] ** 2 +
+                    particlePositions[i * 3 + 1] ** 2 +
+                    particlePositions[i * 3 + 2] ** 2
+                );
+
+                if (dist > 5) {
+                    const theta = Math.random() * Math.PI * 2;
+                    const radius = 2 + Math.random() * 1;
+                    particlePositions[i * 3] = Math.cos(theta) * radius;
+                    particlePositions[i * 3 + 1] = Math.sin(theta) * radius;
+                    particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 2;
+                }
+            }
+            particleGeometry.attributes.position.needsUpdate = true;
+
+            // Rotate rings (different speeds for each)
+            ring1.rotation.z = elapsed * 0.3 * progressNormalized;
+            ring2.rotation.z = -elapsed * 0.5 * progressNormalized;
+            ring3.rotation.z = elapsed * 0.9 * progressNormalized;
+
+            // Particle system rotation
+            particleSystem.rotation.z = elapsed * 0.15;
+
+            // Progressive scale effect
+            const scale = 1 + (progressNormalized * 0.5);
+            shieldGroup.scale.setScalar(scale);
+
+            // Hide instructions when portal opens
+            if (progressNormalized > 0.15) {
+                instructions.style.opacity = Math.max(0, 1 - progressNormalized);
+            } else {
+                instructions.style.opacity = 1;
+            }
+
+            // Update textures periodically (throttled for performance)
+            textureUpdateCounter++;
+            if (textureUpdateCounter % 30 === 0 && progressNormalized > 0.01) {
+                mat1.map = createMagicTexture('outer', smoothedProgress);
+                mat2.map = createMagicTexture('middle', smoothedProgress);
+                mat3.map = createMagicTexture('core', smoothedProgress);
+                mat1.needsUpdate = true;
+                mat2.needsUpdate = true;
+                mat3.needsUpdate = true;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- 11. WINDOW RESIZE ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start everything
+        initCamera();
+        animate();
+    </script>
+</body>
+
+</html>
