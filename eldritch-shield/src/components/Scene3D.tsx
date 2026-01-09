@@ -1,8 +1,8 @@
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Shield } from './Shield';
-import { HandData } from './HandTracker';
-import { MutableRefObject, useRef } from 'react';
+import type { HandData } from './HandTracker';
+import { type MutableRefObject, useRef } from 'react';
 import * as THREE from 'three';
 
 interface Scene3DProps {
@@ -10,12 +10,12 @@ interface Scene3DProps {
 }
 
 function CreateRig({ handDataRef }: Scene3DProps) {
-    const { viewport, camera } = useThree();
+    const { viewport } = useThree();
     const shieldGroupRef = useRef<THREE.Group>(null);
     const smoothedPosition = useRef(new THREE.Vector3(0, 0, 0));
     const smoothedRotation = useRef(new THREE.Quaternion());
 
-    useFrame((state, delta) => {
+    useFrame(() => {
         if (!shieldGroupRef.current) return;
 
         const handData = handDataRef.current;

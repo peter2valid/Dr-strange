@@ -1,12 +1,11 @@
-import { useEffect, RefObject } from 'react';
-import { Hands, Results, HAND_CONNECTIONS } from '@mediapipe/hands';
+import { useEffect, type RefObject } from 'react';
+import { Hands, type Results } from '@mediapipe/hands';
 import { Camera } from '@mediapipe/camera_utils';
-import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 import Webcam from 'react-webcam';
 import * as THREE from 'three';
 
 interface HandTrackerProps {
-    videoRef: RefObject<Webcam>;
+    videoRef: RefObject<Webcam | null>;
     onHandUpdate: (data: HandData | null) => void;
 }
 
@@ -35,21 +34,7 @@ export function HandTracker({ videoRef, onHandUpdate }: HandTrackerProps) {
             const wrist = landmarks[0];
             const middleFingerMCP = landmarks[9];
             const middleFingerTip = landmarks[12];
-            const indexFingerTip = landmarks[8];
-            const ringFingerTip = landmarks[16];
-            const pinkyFingerTip = landmarks[20];
-            const thumbTip = landmarks[4];
 
-            // 2. Gesture Detection (Simple Heuristic)
-            // Check if fingertips are close to the palm (Fist) or extended (Open)
-            // We'll calculate distance from wrist to tips vs wrist to MCPs
-
-            const isFingerExtended = (tip: any, mcp: any) => {
-                // Simple Y check (assuming hand is upright-ish) or distance check relative to wrist
-                const distTip = Math.sqrt(Math.pow(tip.x - wrist.x, 2) + Math.pow(tip.y - wrist.y, 2));
-                const distMcp = Math.sqrt(Math.pow(mcp.x - wrist.x, 2) + Math.pow(mcp.y - wrist.y, 2));
-                return distTip > distMcp * 1.5; // Tip significantly further than MCP behavior
-            };
 
             // For robustness, let's just use a simple "Palm Open" check:
             // Area of the hand box or spread of fingers.
@@ -74,8 +59,8 @@ export function HandTracker({ videoRef, onHandUpdate }: HandTrackerProps) {
 
             // Scale to our 3D viewport size (approx width 10 for camera z=5)
             // Let's assume camera z=5, fov=75. Visible height at z=0 is approx 7.6.
-            const viewportHeight = 7.6;
-            const viewportWidth = viewportHeight * (window.innerWidth / window.innerHeight); // Aspect ratio logic needed
+            // const viewportHeight = 7.6;
+            // const viewportWidth = viewportHeight * (window.innerWidth / window.innerHeight); // Aspect ratio logic needed
 
             // IMPORTANT: We will do the mapping inside the Three.js component using useThree(), 
             // passing raw Normalized Device Coordinates (NDC) here.

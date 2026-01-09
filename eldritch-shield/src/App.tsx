@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import Webcam from 'react-webcam';
 import { CameraFeed } from './components/CameraFeed';
-import { HandTracker, HandData } from './components/HandTracker';
+import { HandTracker, type HandData } from './components/HandTracker';
 import { Scene3D } from './components/Scene3D';
 
 function App() {
