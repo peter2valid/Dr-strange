@@ -28,7 +28,7 @@ function App() {
 
       {/* 4. Optional UI / Instructions */}
       <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-orange-500 font-mono text-center pointer-events-none opacity-70">
-        <p className="text-sm">OPEN PALM to CAST | FIST to HIDE</p>
+        <p className="text-sm">🔮 OPEN PALM to CAST | FIST to HIDE 🔮</p>
       </div>
     </div>
   );
