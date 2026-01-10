@@ -1,6 +1,7 @@
-# React + TypeScript + Vite
+# Eldritch Shield 🛡️🔮
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A mystical Augmented Reality wrapper using React, Three.js, and MediaPipe to summon arcane shields with hand gestures.
+
 
 Currently, two official plugins are available:
 
